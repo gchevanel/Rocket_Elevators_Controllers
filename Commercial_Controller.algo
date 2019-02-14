@@ -1,0 +1,217 @@
+------------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "init_system"
+    SET battery status TO operational
+        FOR EACH battery in battery columns
+            FOR each elevator in columns elevators
+            END FOR
+        END FOR
+    SET column_1 to floors 1 <= 16
+    SET column_2 to floors 1 and 17 TO 33
+    SET column_3 to floors 1 and 34 TO 50
+    SET column_4 to floors 1 and 51 TO 66
+    SET Elevators starting position IS 1
+    SET Elevators status TO IDLE
+    SET Elevators Doors TO CLOSE
+END SEQUENCE
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+SEQUENCE "operate_battery"
+  WHILE battery status operational
+    FOR EACH elevator in elevators
+      WHILE elevator short_list is not EMPTY
+         READ nextfloor FROM short_list
+          IF nextfloor = elevator_floor
+            CALL open_doors THEN
+            ...
+          ELSE IF nextfloor < elevator_floor
+            CALL moving_status THEN
+            CALL Move_Down THEN
+            CALL stopped_status THEN
+            CALL open_doors THEN
+            CALL button_light_OFF
+          ELSE IF nextfloor > elevator_floor
+            CALL moving_status THEN
+            CALL Move_Up THEN
+            CALL stopped_status THEN
+            CALL open_doors THEN
+            CALL button_light_OFF
+
+          END IF
+
+      END WHILE
+    END FOR
+  END WHILE
+END SEQUENCE
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "call_elevators" USING Requestfloor AND columns
+    CALL MainPanelFloor RETURNING column THEN
+    CALL best_elevator WITH column AND elevator_floor AND status AND direction RETURNING elevator THEN
+    CALL show_display_RC WITH Requestfloor THEN
+    CALL show_display_cage WITH Requestfloor
+END SEQUENCE
+-----------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "MainPanelFloor" USING Requestfloor AND columns
+    FOR EACH column in battery columns
+
+        IF Requestfloor <= 16 THEN
+            ADD Requestfloor to short_list
+            SET column to column_1
+                RETURN short_list
+                RETURN column
+
+        ELSE IF Requestfloor > 16 AND <= 33 THEN
+            ADD Requestfloor to short_list
+            SET column to column_1
+                RETURN column
+
+        ELSE IF Requestfloor > 33 AND <= 50 THEN
+            ADD Requestfloor to short_list
+            SET column to column_1
+                RETURN short_list
+                RETURN column
+
+        ELSE IF Requestfloor > 50 AND <= 66 THEN
+            ADD Requestfloor to short_list
+            SET column to column_1
+                RETURN short_list
+                RETURN column
+   END FOR
+END SEQUENCE
+-----------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "best_elevator" USING elevator_floor AND column AND status AND direction
+    FOR EACH elevator IN column
+
+        IF elevator_floor = 1 AND status = IDLE THEN
+            RETURN elevator
+
+        ELSE IF elevator status = MOVING THEN
+        CALL send_request with elevator_floor AND status RETURNING short_list THEN
+        CALL find_least_busy WITH short_list AND column RETURNING Least_busy
+        SET Least_busy to elevator
+        RETURN elevator
+        END IF
+END SEQUENCE
+-----------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "send_request" USING elevator_floor AND column AND status AND short_list
+    FOR EACH CallButton IN column
+        IF CallButton < elevator_floor AND status IS MOVING THEN
+            ADD CallButton to short_list 
+            COMPUTE short_list by "descending"
+        ELSE IF CallButton > elevator_floor AND status IS MOVING THEN
+            ADD CallButton to short_list 
+            COMPUTE short_list by "descending"
+        END IF
+        RETURN short_list
+    END FOR
+END SEQUENCE
+-----------------------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "find_least_busy" USING column AND short_list
+  SET list_length to total_floor
+    FOR EACH elevator in column
+      IF list_length > Length of short_list
+        SET list_length to of short_list
+
+      END IF
+  END FOR
+  DETERMINE Least_busy with list_length
+  RETURN Least_busy
+END SEQUENCE
+
+
+------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "open_doors"
+  SET door = open
+    IF door = open THEN
+    init time to 7 sec THEN
+         CALL "Close_doors"    
+    ELSE stay Open
+    END IF
+END SEQUENCE
+
+SEQUENCE "Close_Doors"
+  SET door = close
+    IF door is not obstruct THEN
+        Close door 
+    ELSE IF door is obstruct THEN
+        CALL "Open_Doors"
+    END IF
+END SEQUENCE
+------------------------------------------------------------------------------------------------------------------------
+
+SEQUENCE "moving_status"
+  SET elevator to moving
+END SEQUENCE
+
+SEQUENCE "idle_status"
+  SET elevator to idle
+END SEQUENCE
+
+SEQUENCE "stopped_status"
+  SET elevator to stopped
+END SEQUENCE
+
+
+--------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "find_CallButton" USING DIRECTION AND floor
+  FOR EACH CallButton IN CallButtons
+    IF DIRECTION = CallButton DIRECTION AND floor = CallButton floor THEN
+      RETURN CallButton
+    END IF
+  END FOR
+
+END SEQUENCE
+--------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "button_light_ON" USING DIRECTION AND floor
+  CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
+    SET button_light TO ON
+END SEQUENCE
+--------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "button_light_OFF" USING DIRECTION AND floor
+  CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
+    SET button_light TO OFF
+END SEQUENCE
+--------------------------------------------------------------------------------------------------------------------------
+
+SEQUENCE "Move_Up" USING elevator_floor AND floor
+   FOR EACH Elevator in Elevators
+       IF floor < elevator_floor
+           INCREMENT elevator_floor by 1
+           REPEAT-UNTIL floor = elevator_floor
+       END IF
+   END FOR
+END SEQUENCE
+--------------------------------------------------------------------------------------------------------------------------
+SEQUENCE "Move_Down" USING elevator_floor AND floor
+   FOR EACH Elevator in Elevators
+       IF floor < elevator_floor
+           DECREMENT elevator_floor by 1
+           REPEAT-UNTIL floor = elevator_foor
+       END IF
+   END FOR
+END SEQUENCE
+--------------------------------------------------------------------------------------------------------------------------
+
+SEQUENCE "show_display_cage" USING Requestfloor
+    FOR EACH elevator in columns
+        SHOW Requestfloor ON screen UNTIL elevator_floor = Requestfloor THEN
+        SHOW NORTHING
+    END FOR
+
+END SEQUENCE
+
+--------------------------------------------------------------------------------------------------------------------------
+
+SEQUENCE "show_display_RC" USING Requestfloor
+    FOR EACH elevator in columns
+        IF Requestfloor IS pressed THEN
+            SHOW Requestfloor number SET timer 2 seconds ON screen THEN
+            SHOW elevator name SET timer 3 seconds ON screen THEN
+            SHOW NOTHING
+        END IF
+    END FOR
+
+END SEQUENCE
+
+--------------------------------------------------------------------------------------------------------------------------

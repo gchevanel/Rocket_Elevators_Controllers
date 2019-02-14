@@ -1,7 +1,7 @@
 ---------1 Stage init the system -------------------------------------------------------------------------------------------
 
 SEQUENCE "INIT_ELEVATOR_SYSTEM"
-  SET BATTERY_STATUS = operational
+  SET BATTERY_STATUS TO operational
   FOR EACH COLUMN IN BATTERY COLUMNS 
   END FOR
     FOR EACH ELEVATOR IN COLUMN ELEVATORS
@@ -163,19 +163,19 @@ END SEQUENCE
 
 SEQUENCE "send_request" USING elevator AND floor
   ADD floor_request AND requested_floor to elevator_floor_list THEN
-  CALL sort_list WITH  elevator direction and floor_list AND requested_floor
-  SET elevator_floor_list to sorted_list
+  CALL compute_list WITH  elevator direction and floor_list AND requested_floor
+  SET elevator_floor_list to computed_list
 END SEQUENCE
 
 --------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "sort_list" USING direction AND floor_list
+SEQUENCE "compute_list" USING direction AND floor_list
     IF direction = "up" THEN
-      SORT floor_list by "ascending"
+      compute floor_list by "ascending"
     ELSE IF direction = "down"
-      SORT floor_list by "descending"
+      compute floor_list by "descending"
     END IF
-    SET floor_list to sorted_list
-  return  sorted_list
+    SET floor_list to computed_list
+  return  computed_list
 END SEQUENCE
 
 --------------------------------------------------------------------------------------------------------------------------
