@@ -1,29 +1,40 @@
-------------------------------------------------------------------------------------------------------------------------------------------
+' ---------------------------------INIT SYSTEM-------------------------------------------------------------------
+
 SEQUENCE "init_system"
+  
     SET battery status TO operational
-        FOR EACH battery in battery columns
-            FOR each elevator in columns elevators
-            END FOR
-        END FOR
     SET column_1 to floors 1 <= 16
+    SET column_1 elevators to 3
     SET column_2 to floors 1 and 17 TO 33
+    SET column_2 elevators to 3
     SET column_3 to floors 1 and 34 TO 50
-    SET column_4 to floors 1 and 51 TO 66
+    SET column_3 elevators to 3
+    SET column_4 to floors 1 and 51 TO 66        
+    SET column_3 elevators to 3
+
+    SET columns to column_1, column_2, column_3, column_4
     SET Elevators starting position IS 1
     SET Elevators status TO IDLE
     SET Elevators Doors TO CLOSE
+    CALL operate_battery
+
 END SEQUENCE
 
------------------------------------------------------------------------------------------------------------------------------------------
+' ----------------------------------MAIN THAT START THE INIT--------------------------------------------------
+
+SEQUENCE "main"
+  CALL init_system
+END SEQUENCE
+' ------------------------OPERATE BATTERY------------------------------------------------------------------
 
 SEQUENCE "operate_battery"
   WHILE battery status operational
-    FOR EACH elevator in elevators
-      WHILE elevator short_list is not EMPTY
-         READ nextfloor FROM short_list
+  FOR EACH column in columns
+    FOR EACH elevator in column elevators
+      WHILE elevator floor_list is not EMPTY
+         READ nextfloor FROM floor_list
           IF nextfloor = elevator_floor
             CALL open_doors THEN
-            ...
           ELSE IF nextfloor < elevator_floor
             CALL moving_status THEN
             CALL Move_Down THEN
@@ -36,82 +47,100 @@ SEQUENCE "operate_battery"
             CALL stopped_status THEN
             CALL open_doors THEN
             CALL button_light_OFF
+          ELSE IF elevator floor_list is EMPTY
+            CALL return_origin
 
           END IF
 
       END WHILE
     END FOR
+        END FOR
   END WHILE
 END SEQUENCE
 
------------------------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "call_elevators" USING Requestfloor AND columns
-    CALL MainPanelFloor RETURNING column THEN
-    CALL best_elevator WITH column AND elevator_floor AND status AND direction RETURNING elevator THEN
+
+' ----------------------------CALL ELEVATOR--------------------------------------------------------------
+
+SEQUENCE "call_elevators" USING Requestfloor AND CallButton AND floor
+    find column ---- CALL MainPanelFloor WITH Requestfloor RETURNING column THEN
+    CALL "button_light_ON" WITH direction AND floor
+    CALL best_elevator WITH column AND Requestfloor  RETURNING elevator THEN
+    CALL add_floor_to_list WITH elevator AND Requestfloor 
+
     CALL show_display_RC WITH Requestfloor THEN
     CALL show_display_cage WITH Requestfloor
 END SEQUENCE
------------------------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "MainPanelFloor" USING Requestfloor AND columns
+
+' -------------------LISTENING EVENT FROM USER INPUT-------------------------------------------------------------------
+
+SEQUENCE "MainPanelFloor" USING Requestfloor
     FOR EACH column in battery columns
 
         IF Requestfloor <= 16 THEN
-            ADD Requestfloor to short_list
             SET column to column_1
-                RETURN short_list
                 RETURN column
 
         ELSE IF Requestfloor > 16 AND <= 33 THEN
-            ADD Requestfloor to short_list
             SET column to column_1
                 RETURN column
 
         ELSE IF Requestfloor > 33 AND <= 50 THEN
-            ADD Requestfloor to short_list
             SET column to column_1
-                RETURN short_list
                 RETURN column
 
         ELSE IF Requestfloor > 50 AND <= 66 THEN
-            ADD Requestfloor to short_list
             SET column to column_1
-                RETURN short_list
                 RETURN column
    END FOR
 END SEQUENCE
------------------------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "best_elevator" USING elevator_floor AND column AND status AND direction
+
+' -------------------ADD FLOOR TO ELEVATOR LIST--------------------------------------------------------------------------
+SEQUENCE "add_floor_to_list" USING elevator AND RequestFloor
+
+  ADD RequestFloor to elevator floor_list
+
+END SEQUENCE
+
+' -------------------------BEST ELEVATOR---------------------------------------------------------------------
+
+SEQUENCE "best_elevator" USING column AND RequestFloor
     FOR EACH elevator IN column
 
-        IF elevator_floor = 1 AND status = IDLE THEN
+        IF elevator floor IS 1 AND status IS IDLE THEN
+        
             RETURN elevator
 
-        ELSE IF elevator status = MOVING THEN
-        CALL send_request with elevator_floor AND status RETURNING short_list THEN
-        CALL find_least_busy WITH short_list AND column RETURNING Least_busy
+        ELSE IF elevator status IS MOVING THEN
+        CALL send_request with elevator_floor AND status RETURNING floor_list THEN
+        CALL find_least_busy WITH floor_list AND column RETURNING Least_busy
         SET Least_busy to elevator
+
         RETURN elevator
         END IF
 END SEQUENCE
------------------------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "send_request" USING elevator_floor AND column AND status AND short_list
+
+' ------------------------------SEND REQUEST-------------------------------------------------------------------------
+
+SEQUENCE "send_request" USING elevator_floor AND column AND status AND floor_list
     FOR EACH CallButton IN column
         IF CallButton < elevator_floor AND status IS MOVING THEN
-            ADD CallButton to short_list 
-            COMPUTE short_list by "descending"
+            ADD CallButton to floor_list 
+            COMPUTE floor_list by "descending"
         ELSE IF CallButton > elevator_floor AND status IS MOVING THEN
-            ADD CallButton to short_list 
-            COMPUTE short_list by "descending"
+            ADD CallButton to floor_list 
+            COMPUTE floor_list by "descending"
         END IF
-        RETURN short_list
+        RETURN floor_list
     END FOR
 END SEQUENCE
------------------------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "find_least_busy" USING column AND short_list
+
+' ------------------FIND LEAST BUSY ELEVATOR WITH SHORTEST LIST---------------------------------------------------------
+
+SEQUENCE "find_least_busy" USING column AND floor_list
   SET list_length to total_floor
     FOR EACH elevator in column
-      IF list_length > Length of short_list
-        SET list_length to of short_list
+      IF list_length > Length of floor_list
+        SET list_length to of floor_list
 
       END IF
   END FOR
@@ -119,26 +148,30 @@ SEQUENCE "find_least_busy" USING column AND short_list
   RETURN Least_busy
 END SEQUENCE
 
+' -------------------OPEN DOOR----------------------------------------------------------------------------------
 
-------------------------------------------------------------------------------------------------------------------------
 SEQUENCE "open_doors"
   SET door = open
     IF door = open THEN
-    init time to 7 sec THEN
+    SET timer to 7 seconds THEN
          CALL "Close_doors"    
     ELSE stay Open
     END IF
 END SEQUENCE
 
+' -------------------CLOSE DOOR----------------------------------------------------------------------------------
+
 SEQUENCE "Close_Doors"
+  CALL over_weight RETURNING 
   SET door = close
-    IF door is not obstruct THEN
+    IF door IS not obstruct OR over_weight THEN
         Close door 
-    ELSE IF door is obstruct THEN
+    ELSE IF door IS obstruct OR over_weight THEN
         CALL "Open_Doors"
     END IF
 END SEQUENCE
-------------------------------------------------------------------------------------------------------------------------
+
+' -------------------------ELEVATOR STATUS-----------------------------------------------------------------------
 
 SEQUENCE "moving_status"
   SET elevator to moving
@@ -153,26 +186,32 @@ SEQUENCE "stopped_status"
 END SEQUENCE
 
 
---------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "find_CallButton" USING DIRECTION AND floor
-  FOR EACH CallButton IN CallButtons
+' --------------------EACH FLOOR CALL BUTTON----------------------------------------------------------------------
+
+SEQUENCE "find_CallButton" USING DIRECTION AND floor AND column
+  FOR EACH CallButton IN Column CallButtons
     IF DIRECTION = CallButton DIRECTION AND floor = CallButton floor THEN
       RETURN CallButton
     END IF
   END FOR
 
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+
+' --------------------FLOOR BUTTON LIGHT TO ON-------------------------------------------------------------------------
+
 SEQUENCE "button_light_ON" USING DIRECTION AND floor
   CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
     SET button_light TO ON
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+
+' -----------------------FLOOR BUTTON LIGHT TO OFF----------------------------------------------------------------------------
+
 SEQUENCE "button_light_OFF" USING DIRECTION AND floor
   CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
     SET button_light TO OFF
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+
+' -----------------------MOVE THE ELEVATOR UP--------------------------------------------------------------------------------
 
 SEQUENCE "Move_Up" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
@@ -182,7 +221,7 @@ SEQUENCE "Move_Up" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+' -------------------MOVE THE ELEVATOR DOWN------------------------------------------------------------------------------
 SEQUENCE "Move_Down" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
        IF floor < elevator_floor
@@ -191,7 +230,7 @@ SEQUENCE "Move_Down" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+' ------------------THE DISPLAY IN ELEVATOR------------------------------------------------------------------------------
 
 SEQUENCE "show_display_cage" USING Requestfloor
     FOR EACH elevator in columns
@@ -201,7 +240,7 @@ SEQUENCE "show_display_cage" USING Requestfloor
 
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
+' ----------------------SHOW THE DISPLAY AT FLOOR 1---------------------------------------------------------------------------------
 
 SEQUENCE "show_display_RC" USING Requestfloor
     FOR EACH elevator in columns
@@ -214,4 +253,29 @@ SEQUENCE "show_display_RC" USING Requestfloor
 
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
+' ------------------RETURN ELEVATOR TO FLOOR 1---------------------------------------------------------------------------------------
+SEQUENCE "return_origin"
+  SET origin to 1
+  CALL Move_Down UNTIL elevator_floor = origin THEN
+  CALL idle_status
+
+END SEQUENCE
+
+' -----------------------OVER WEIGHT OF ELEVATOR--------------------------------------------------------------------------------
+
+SEQUENCE "over_weight" USING weight_sensor AND maximum_weight AND columns
+  FOR EACH elevator in columns
+    SET maximum_weight TO 3500 lbs THEN
+    READ weight_sensor THEN
+      IF weight_sensor value >= 3500 lbs THEN
+        SET heavy_display_light TO ON THEN
+        CALL open_doors
+      ELSE IF weight_sensor value < 3500 lbs
+        SET heavy_display_light TO OFF
+      END IF
+  END FOR
+END SEQUENCE
+
+
+
+

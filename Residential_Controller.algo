@@ -1,102 +1,120 @@
----------1 Stage init the system -------------------------------------------------------------------------------------------
+' ------------MAIN TO ACTIVE SYSTEM---------------------------------------------------------------------------------------
 
-SEQUENCE "INIT_ELEVATOR_SYSTEM"
-  SET BATTERY_STATUS TO operational
-  FOR EACH COLUMN IN BATTERY COLUMNS 
-  END FOR
-    FOR EACH ELEVATOR IN COLUMN ELEVATORS
-      CALL operate_battery 
-  END FOR
-  SET ELEVATORS_STATUS = IDLE
-  SET ELEVATORS_POSITION = 1
-  SET ELEVATORS_DOORS = close
+SEQUENCE "main"
+  CALL init_elevator_system
 END SEQUENCE
 
----------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "CALL_ELEVATORS" USING DIRECTION AND floor
-  CALL "button_light_ON" WITH DIRECTION AND floor
-  CALL find_BEST_ELEVATORS WITH DIRECTION AND floor RETURNING elevator
+' ---------1 Stage init the system ---------------------------------------------------------------------------------------
+
+SEQUENCE "init_elevator_system"
+  SET battery STATUS TO operational
+  FOR EACH column IN battery columns
+  END FOR
+    FOR EACH elevator IN column elevators
+  END FOR
+  SET elevator_status TO IDLE
+  SET elevator_position TO 1
+  SET elevator_door TO close
+  CALL operate_battery 
+END SEQUENCE
+
+' ----------FLOOR BUTTON TO CALL ELEVATOR---------------------------------------------------------------------------------
+
+SEQUENCE "call_elevators" USING direction AND floor
+  CALL "button_light_ON" WITH direction AND floor
+  CALL find_best_elevators WITH direction AND floor RETURNING elevator
   CALL send_request with elevator AND floor
 
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "button_light_ON" USING DIRECTION AND floor
-  CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
+' ------------FLOOR BUTTON LIGHT ON----------------------------------------------------------------------------------------
+
+SEQUENCE "button_light_ON" USING direction AND floor
+  CALL "find_CallButton" WITH direction AND floor RETURNING CallButton
     SET button_light TO ON
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "button_light_OFF" USING DIRECTION AND floor
-  CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
+
+' --------------FLOOR BUTTON LIGHT ON--------------------------------------------------------------------------------------
+
+SEQUENCE "button_light_OFF" USING direction AND floor
+  CALL "find_CallButton" WITH direction AND floor RETURNING CallButton
     SET button_light TO OFF
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "find_CallButton" USING DIRECTION AND floor
+
+' -------------------FIND CALL BUTTON------------------------------------------------------------------------------------
+
+SEQUENCE "find_CallButton" USING direction AND floor
   FOR EACH CallButton IN CallButtons
-    IF DIRECTION = CallButton DIRECTION AND floor = CallButton floor THEN
+    IF direction = CallButton direction AND floor = CallButton floor THEN
       RETURN CallButton
     END IF
   END FOR
 
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+' -------------------FLOOR REQUEST BUTTON-----------------------------------------------------------------------------------
+
 SEQUENCE "floor_request_button" USING FloorRequestButton AND floor
   FOR EACH FloorRequestButton IN FloorRequestButtons
     IF floor = FloorRequestButton
-
+      CALL cage_button_light_on
       RETURN FloorRequestButton
     END IF
   END FOR
 
 END SEQUENCE
----------------------------SEQUENCE IN WHICH THE USER WILL REQUEST A FLOOR IN THE ELEVATOR PANEL--------------------------
 
-SEQUENCE "request_floor" USING requested_floor
-   CALL cage_button_light_on WITH requested_floor
-   CALL send_request with request_floor
+' ---------------------------REQUEST A FLOOR IN THE ELEVATOR PANEL---------------------------------------------------------
+
+SEQUENCE "request_floor" USING requested_floor AND elevator_floor
+  CALL cage_button_light_on WITH requested_floor
+  CALL send_request with request_floor
+  IF elevator_floor = requested_floor
+    CALL cage_button_light_off
+  END IF
 
 END SEQUENCE
 
------------SEQUENCE WHERE THE FLOOR BUTTONS LIGHTS TURN ON DEPENDING ON THE USER REQUESTS (THE BUTTONS HE PRESSED)---------
+' -----------CAGE BUTTON LIGHT TO ON -------------------------------------------------------------------------------------
 
 SEQUENCE "cage_button_light_on" USING requested_floor
    CALL find_floor_request_button WITH requested_floor RETURNING floor_button
    SET floor_button light to ON USING requested_floor
 END SEQUENCE
 
---------------SEQUENCE WHERE THE FLOOR BUTTONS LIGHTS TURN OFF DEPENDING ON THE REQUEST SERVED IN THE QUEUE---------------
+' --------------CAGE BUTTON LIGHT TO ON-----------------------------------------------------------------------------
 
-SEQUENCE "floor_button_light_off" USING requested_floor
+SEQUENCE "cage_button_light_off" USING requested_floor
    CALL find_floor_request_button WITH requested_floor RETURNING floor_button
    SET floor_button light to OFF USING requested_floor
 END SEQUENCE
 
--------------------SEQUENCE WHERE THE CONTROLLER FINDS WHICH FLOOR BUTTON HAS BEEN PRESSED TO LIGHT THEM UP-------------------
+' -------------------FINDS WHICH FLOOR BUTTON HAS BEEN PRESSED--------------------------------------------------------------
 
 SEQUENCE "find_floor_request_button" USING requested_floor
-   FOR EACH floor_button in floor_buttons
+   FOR EACH floor_button IN floor_buttons
        IF requested_floor = floor_button THEN
            RETURN floor_button
        END IF
    END FOR
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
-SEQUENCE "find_BEST_ELEVATORS" USING DIRECTION AND floor
+' -----------FIND THE BEST ELEVATORS---------------------------------------------------------------------------------
+
+SEQUENCE "find_best_elevators" USING direction AND floor
   FOR EACH  ELEVATOR IN ELEVATORS
 
-   floor = CALL BUTTON floor
-    IF floor = ELEVATOR_floor AND DIRECTION = elevator_direction AND elevator_status = stopped then
+  '  floor = CALL BUTTON floor
+    IF floor = ELEVATOR_floor AND direction = elevator_direction AND elevator_status = stopped THEN
       RETURN ELEVATOR
 
-    ELSE IF floor = ELEVATOR_floor AND elevator_status = IDLE then
+    ELSE IF floor = ELEVATOR_floor AND elevator_status = IDLE THEN
       RETURN ELEVATOR
     
-    ELSE IF floor > ELEVATOR_floor AND elevator_status IS moving OR stopped AND floor_DIRECTION IS STATUS_DIRECTION THEN
+    ELSE IF floor > ELEVATOR_floor AND elevator_status IS moving OR stopped AND floor_direction IS STATUS_direction THEN
       CALL find_closest_elevator WITH floor and cages_floor RETURNING closest_elevator
       RETURN closest_elevator
     
-    ELSE IF floor < ELEVATOR_floor AND elevator_status IS moving OR stopped AND floor_DIRECTION IS STATUS_DIRECTION THEN
+    ELSE IF floor < ELEVATOR_floor AND elevator_status IS moving OR stopped AND floor_direction IS STATUS_direction THEN
     CALL find_closest_elevator WITH floor and cages_floor RETURNING closest_elevator
       RETURN closest_elevator
 
@@ -110,24 +128,25 @@ SEQUENCE "find_BEST_ELEVATORS" USING DIRECTION AND floor
 END SEQUENCE
 
 
---------------------------------------------------------------------------------------------------------------------------
+' ------------FIND THE CLOSEST ELEVATOR OF THE USER CALL------------------------------------------------------------
+
 SEQUENCE "find_closest_elevator" USING floor AND cages_floor AND direction
-      COMPUTE RefGap as difference between floor and cages_floor 
-      set shortest_gap to RefGap
+      COMPUTE RefGap as difference between floor AND cages_floor 
+      SET shortest_gap TO RefGap
  
   FOR EACH ELEVATOR IN ELEVATORS
-    IF elevator_direction = direction then
-          COMPUTE Gap as difference between floor and elevator_floor
-      if gap < shortest_gap 
-          set shortest_gap to gap
-      end if
+    IF elevator_direction = direction THEN
+          COMPUTE Gap as difference between floor AND elevator_floor
+      IF gap < shortest_gap 
+          SET shortest_gap TO gap
+      END IF
     END IF
   END FOR
-    DETERMINE closest_elevator with shortest_gap
+    DETERMINE closest_elevator WITH shortest_gap
       RETURN closest_elevator
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
+' -------------MOVE THE ELEVATOR UP---------------------------------------------------------------------------------
 
 SEQUENCE "Move_Up" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
@@ -137,7 +156,8 @@ SEQUENCE "Move_Up" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+' -------------MOVE THE ELEVATOR DOWN-------------------------------------------------------------------------------
+
 SEQUENCE "Move_Down" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
        IF floor < elevator_floor
@@ -146,7 +166,9 @@ SEQUENCE "Move_Down" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+
+' --------------FIND ELEVATOR WITH THE LOWEST QUEUE-----------------------------------------------------------------
+
 SEQUENCE "find_least_busy" 
   SET list_length to total_floor
     FOR EACH elevator in elevators
@@ -158,7 +180,8 @@ SEQUENCE "find_least_busy"
   DETERMINE Least_busy with list_length
   RETURN Least_busy
 END SEQUENCE
---------------------------------------------------------------------------------------------------------------------------
+
+' --------------------SEND LIST-------------------------------------------------------------------------------------
 
 
 SEQUENCE "send_request" USING elevator AND floor
@@ -167,7 +190,8 @@ SEQUENCE "send_request" USING elevator AND floor
   SET elevator_floor_list to computed_list
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
+' ------------------LISTE ORDER-------------------------------------------------------------------------------------
+
 SEQUENCE "compute_list" USING direction AND floor_list
     IF direction = "up" THEN
       compute floor_list by "ascending"
@@ -178,7 +202,7 @@ SEQUENCE "compute_list" USING direction AND floor_list
   return  computed_list
 END SEQUENCE
 
---------------------------------------------------------------------------------------------------------------------------
+' ----------------ALL OPERATE CODE-------------------------------------------------------------------------------
 
 SEQUENCE "operate_battery"
   WHILE battery status operational
@@ -187,7 +211,6 @@ SEQUENCE "operate_battery"
          READ nextfloor FROM floor_list
           IF nextfloor = elevator_floor
             CALL open_doors
-            CALL button_light_OFF
           ELSE IF nextfloor < elevator_floor
             CALL moving_status
             CALL Move_Down
@@ -198,6 +221,8 @@ SEQUENCE "operate_battery"
             CALL Move_Up
             CALL stopped_status
             CALL open_doors
+          ELSE IF elevator floor_list is EMPTY
+            CALL return_origin
           END IF
 
       END WHILE
@@ -205,46 +230,64 @@ SEQUENCE "operate_battery"
   END WHILE
 END SEQUENCE
 
-------------------------------------------------------------------------------------------------------------------------
+' -------------OPEN AND CLOSE DOOR----------------------------------------------------------------------------
 SEQUENCE "open_doors"
   SET door = open
     IF door = open THEN
-    init time to 7 sec THEN
+    SET timer to 7 seconds THEN
          CALL "Close_doors"    
     ELSE stay Open
     END IF
 END SEQUENCE
 
 SEQUENCE "Close_Doors"
+  CALL over_weight RETURNING 
   SET door = close
-    IF door is not obstruct THEN
+    IF door IS not obstruct OR over_weight THEN
         Close door 
-    ELSE IF door is obstruct THEN
+    ELSE IF door IS obstruct OR over_weight THEN
         CALL "Open_Doors"
     END IF
 END SEQUENCE
-------------------------------------------------------------------------------------------------------------------------
+' --------ELEVATOR STATUS-------------------------------------------------------------------------------------
 
 SEQUENCE "moving_status"
-  SET elevator to moving
+  SET elevator TO moving
 END SEQUENCE
 
 SEQUENCE "idle_status"
-  SET elevator to idle
+  SET elevator TO idle
 END SEQUENCE
 
 SEQUENCE "stopped_status"
-  SET elevator to stopped
+  SET elevator TO stopped
 END SEQUENCE
 
+' ------------RETURN ELEVATOR TO ORIGIN POINTS--------------------------------------------------------------
+
+SEQUENCE "return_origin"
+  SET origin to 1
+  CALL Move_Down UNTIL elevator_floor = origin THEN
+  CALL idle_status
+
+
+END SEQUENCE
+
+' --------------------OVER WEIGHT--------------------------------------------------------------------------
+
+SEQUENCE "over_weight" USING weight_sensor AND maximum_weight
+  FOR EACH elevator in column
+    SET maximum_weight TO 3500 lbs THEN
+    READ weight_sensor THEN
+      IF weight_sensor value >= 3500 lbs THEN
+        SET heavy_display_light TO ON THEN
+        CALL open_doors
+      ELSE IF weight_sensor value < 3500 lbs
+        SET heavy_display_light TO OFF
+      END IF
+  END FOR
+
+
 ------------------------------------------------------------------------------------------------------------------------
-
-
-
-------------------------------------------------------------------------------------------------------------------------
-
-
-
-
 
 
