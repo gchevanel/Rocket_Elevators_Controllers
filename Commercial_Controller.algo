@@ -81,15 +81,15 @@ SEQUENCE "MainPanelFloor" USING Requestfloor
                 RETURN column
 
         ELSE IF Requestfloor > 16 AND <= 33 THEN
-            SET column to column_1
+            SET column to column_2
                 RETURN column
 
         ELSE IF Requestfloor > 33 AND <= 50 THEN
-            SET column to column_1
+            SET column to column_3
                 RETURN column
 
         ELSE IF Requestfloor > 50 AND <= 66 THEN
-            SET column to column_1
+            SET column to column_4
                 RETURN column
    END FOR
 END SEQUENCE
