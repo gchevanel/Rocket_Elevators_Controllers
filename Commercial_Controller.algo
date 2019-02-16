@@ -263,7 +263,7 @@ END SEQUENCE
 
 ' -----------------------OVER WEIGHT OF ELEVATOR--------------------------------------------------------------------------------
 
-SEQUENCE "over_weight" USING weight_sensor AND maximum_weight AND columns
+SEQUENCE "over_weight" USING weight_sensor AND columns
   FOR EACH elevator in columns
     SET maximum_weight TO 3500 lbs THEN
     READ weight_sensor THEN
