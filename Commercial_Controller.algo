@@ -1,4 +1,4 @@
-' ---------------------------------INIT SYSTEM-------------------------------------------------------------------
+// ' ---------------------------------INIT SYSTEM-------------------------------------------------------------------
 
 SEQUENCE "init_system"
   
@@ -20,12 +20,12 @@ SEQUENCE "init_system"
 
 END SEQUENCE
 
-' ----------------------------------MAIN THAT START THE INIT--------------------------------------------------
+// ' ----------------------------------MAIN THAT START THE INIT--------------------------------------------------
 
 SEQUENCE "main"
   CALL init_system
 END SEQUENCE
-' ------------------------OPERATE BATTERY------------------------------------------------------------------
+// ' ------------------------OPERATE BATTERY------------------------------------------------------------------
 
 SEQUENCE "operate_battery"
   WHILE battery status operational
@@ -59,7 +59,7 @@ SEQUENCE "operate_battery"
 END SEQUENCE
 
 
-' ----------------------------CALL ELEVATOR--------------------------------------------------------------
+// ' ----------------------------CALL ELEVATOR--------------------------------------------------------------
 
 SEQUENCE "call_elevators" USING Requestfloor AND CallButton AND floor
     find column ---- CALL MainPanelFloor WITH Requestfloor RETURNING column THEN
@@ -71,7 +71,7 @@ SEQUENCE "call_elevators" USING Requestfloor AND CallButton AND floor
     CALL show_display_cage WITH Requestfloor
 END SEQUENCE
 
-' -------------------LISTENING EVENT FROM USER INPUT-------------------------------------------------------------------
+// ' -------------------LISTENING EVENT FROM USER INPUT-------------------------------------------------------------------
 
 SEQUENCE "MainPanelFloor" USING Requestfloor
     FOR EACH column in battery columns
@@ -94,14 +94,14 @@ SEQUENCE "MainPanelFloor" USING Requestfloor
    END FOR
 END SEQUENCE
 
-' -------------------ADD FLOOR TO ELEVATOR LIST--------------------------------------------------------------------------
+// ' -------------------ADD FLOOR TO ELEVATOR LIST--------------------------------------------------------------------------
 SEQUENCE "add_floor_to_list" USING elevator AND RequestFloor
 
   ADD RequestFloor to elevator floor_list
 
 END SEQUENCE
 
-' -------------------------BEST ELEVATOR---------------------------------------------------------------------
+// ' -------------------------BEST ELEVATOR---------------------------------------------------------------------
 
 SEQUENCE "best_elevator" USING column AND RequestFloor
     FOR EACH elevator IN column
@@ -119,7 +119,7 @@ SEQUENCE "best_elevator" USING column AND RequestFloor
         END IF
 END SEQUENCE
 
-' ------------------------------SEND REQUEST-------------------------------------------------------------------------
+// ' ------------------------------SEND REQUEST-------------------------------------------------------------------------
 
 SEQUENCE "send_request" USING elevator_floor AND column AND status AND floor_list
     FOR EACH CallButton IN column
@@ -134,7 +134,7 @@ SEQUENCE "send_request" USING elevator_floor AND column AND status AND floor_lis
     END FOR
 END SEQUENCE
 
-' ------------------FIND LEAST BUSY ELEVATOR WITH SHORTEST LIST---------------------------------------------------------
+// ' ------------------FIND LEAST BUSY ELEVATOR WITH SHORTEST LIST---------------------------------------------------------
 
 SEQUENCE "find_least_busy" USING column AND floor_list
   SET list_length to total_floor
@@ -148,7 +148,7 @@ SEQUENCE "find_least_busy" USING column AND floor_list
   RETURN Least_busy
 END SEQUENCE
 
-' -------------------OPEN DOOR----------------------------------------------------------------------------------
+// ' -------------------OPEN DOOR----------------------------------------------------------------------------------
 
 SEQUENCE "open_doors"
   SET door = open
@@ -159,7 +159,7 @@ SEQUENCE "open_doors"
     END IF
 END SEQUENCE
 
-' -------------------CLOSE DOOR----------------------------------------------------------------------------------
+// ' -------------------CLOSE DOOR----------------------------------------------------------------------------------
 
 SEQUENCE "Close_Doors"
   CALL over_weight RETURNING 
@@ -171,7 +171,7 @@ SEQUENCE "Close_Doors"
     END IF
 END SEQUENCE
 
-' -------------------------ELEVATOR STATUS-----------------------------------------------------------------------
+// ' -------------------------ELEVATOR STATUS-----------------------------------------------------------------------
 
 SEQUENCE "moving_status"
   SET elevator to moving
@@ -186,7 +186,7 @@ SEQUENCE "stopped_status"
 END SEQUENCE
 
 
-' --------------------EACH FLOOR CALL BUTTON----------------------------------------------------------------------
+// ' --------------------EACH FLOOR CALL BUTTON----------------------------------------------------------------------
 
 SEQUENCE "find_CallButton" USING DIRECTION AND floor AND column
   FOR EACH CallButton IN Column CallButtons
@@ -197,21 +197,21 @@ SEQUENCE "find_CallButton" USING DIRECTION AND floor AND column
 
 END SEQUENCE
 
-' --------------------FLOOR BUTTON LIGHT TO ON-------------------------------------------------------------------------
+// ' --------------------FLOOR BUTTON LIGHT TO ON-------------------------------------------------------------------------
 
 SEQUENCE "button_light_ON" USING DIRECTION AND floor
   CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
     SET button_light TO ON
 END SEQUENCE
 
-' -----------------------FLOOR BUTTON LIGHT TO OFF----------------------------------------------------------------------------
+// ' -----------------------FLOOR BUTTON LIGHT TO OFF----------------------------------------------------------------------------
 
 SEQUENCE "button_light_OFF" USING DIRECTION AND floor
   CALL "find_CallButton" WITH DIRECTION AND floor RETURNING CallButton
     SET button_light TO OFF
 END SEQUENCE
 
-' -----------------------MOVE THE ELEVATOR UP--------------------------------------------------------------------------------
+// ' -----------------------MOVE THE ELEVATOR UP--------------------------------------------------------------------------------
 
 SEQUENCE "Move_Up" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
@@ -221,7 +221,7 @@ SEQUENCE "Move_Up" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
-' -------------------MOVE THE ELEVATOR DOWN------------------------------------------------------------------------------
+// ' -------------------MOVE THE ELEVATOR DOWN------------------------------------------------------------------------------
 SEQUENCE "Move_Down" USING elevator_floor AND floor
    FOR EACH Elevator in Elevators
        IF floor < elevator_floor
@@ -230,7 +230,7 @@ SEQUENCE "Move_Down" USING elevator_floor AND floor
        END IF
    END FOR
 END SEQUENCE
-' ------------------THE DISPLAY IN ELEVATOR------------------------------------------------------------------------------
+// ' ------------------THE DISPLAY IN ELEVATOR------------------------------------------------------------------------------
 
 SEQUENCE "show_display_cage" USING Requestfloor
     FOR EACH elevator in columns
@@ -240,7 +240,7 @@ SEQUENCE "show_display_cage" USING Requestfloor
 
 END SEQUENCE
 
-' ----------------------SHOW THE DISPLAY AT FLOOR 1---------------------------------------------------------------------------------
+// ' ----------------------SHOW THE DISPLAY AT FLOOR 1---------------------------------------------------------------------------------
 
 SEQUENCE "show_display_RC" USING Requestfloor
     FOR EACH elevator in columns
@@ -253,7 +253,7 @@ SEQUENCE "show_display_RC" USING Requestfloor
 
 END SEQUENCE
 
-' ------------------RETURN ELEVATOR TO FLOOR 1---------------------------------------------------------------------------------------
+// ' ------------------RETURN ELEVATOR TO FLOOR 1---------------------------------------------------------------------------------------
 SEQUENCE "return_origin"
   SET origin to 1
   CALL Move_Down UNTIL elevator_floor = origin THEN
@@ -261,7 +261,7 @@ SEQUENCE "return_origin"
 
 END SEQUENCE
 
-' -----------------------OVER WEIGHT OF ELEVATOR--------------------------------------------------------------------------------
+// ' -----------------------OVER WEIGHT OF ELEVATOR--------------------------------------------------------------------------------
 
 SEQUENCE "over_weight" USING weight_sensor AND columns
   FOR EACH elevator in columns
