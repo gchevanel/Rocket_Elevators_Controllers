@@ -7,3 +7,7 @@ after that all animation will be done
 
 for the python you can run it in the terminal after you have entered your scene and saved it
 
+https://www.youtube.com/watch?v=2sS80mPr_W8&feature=youtu.be
+https://www.youtube.com/watch?v=2sS80mPr_W8&feature=youtu.be
+https://www.youtube.com/watch?v=2sS80mPr_W8&feature=youtu.be
+https://www.youtube.com/watch?v=2sS80mPr_W8&feature=youtu.be
