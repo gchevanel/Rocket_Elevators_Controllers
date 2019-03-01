@@ -14,7 +14,7 @@ namespace Commercial_controller
         public int no_of_elevator_per_column;
         public int no_of_column;
         public string user_direction;
-        public Battery battery ;
+        public Battery battery;
         //public List<int> shortest_distance;
         public List<int> shortest_list;
 
@@ -27,19 +27,19 @@ namespace Commercial_controller
             this.battery = new Battery(this.no_of_column);
 
 
-    }
-    public Elevator RequestElevator(int FloorNumber, int RequestedFloor)
+        }
+        public Elevator RequestElevator(int FloorNumber, int RequestedFloor)
         {
             System.Threading.Thread.Sleep(200);
             Console.WriteLine("Request elevator to floor : " + FloorNumber);
             Console.WriteLine("---------------------------------------------------");
             System.Threading.Thread.Sleep(200);
             Console.WriteLine("Call Button Light On");
-            Console.WriteLine("---------------------------------------------------"); 
+            Console.WriteLine("---------------------------------------------------");
             var column = battery.Find_best_column(FloorNumber);
             user_direction = "down";
-            var elevator = column.Find_elevator(FloorNumber, user_direction);
-            if(elevator.elevator_floor > FloorNumber)
+            var elevator = column.Find_Requested_elevator(FloorNumber, user_direction);
+            if (elevator.elevator_floor > FloorNumber)
             {
                 elevator.Send_request(FloorNumber, column.column_no);
                 elevator.Send_request(RequestedFloor, column.column_no);
@@ -48,32 +48,31 @@ namespace Commercial_controller
             else if (elevator.elevator_floor < FloorNumber)
             {
                 elevator.Move_down(RequestedFloor, column.column_no);
-                elevator.Send_request(FloorNumber,column.column_no);
-                elevator.Send_request(RequestedFloor,column.column_no);
+                elevator.Send_request(FloorNumber, column.column_no);
+                elevator.Send_request(RequestedFloor, column.column_no);
             }
-
             Console.WriteLine("Button Light Off");
 
             return elevator;
-            }
+        }
 
 
         public Elevator AssignElevator(int RequestedFloor)
         {
             System.Threading.Thread.Sleep(200);
             Console.WriteLine("Requested floor : " + RequestedFloor);
-            Console.WriteLine("---------------------------------------------------");
             System.Threading.Thread.Sleep(200);
             Console.WriteLine("Call Button Light On");
-            Console.WriteLine("---------------------------------------------------");
 
 
             Column column = battery.Find_best_column(RequestedFloor);
             user_direction = "up";
-            Elevator elevator = column.Find_elevator(RequestedFloor, user_direction);
-            elevator.Open_door();
+            var FloorNumber = 1;
+            Elevator elevator = column.Find_Assign_elevator(RequestedFloor, FloorNumber, user_direction);
 
-            elevator.Send_request(RequestedFloor,column.column_no);
+            elevator.Send_request(FloorNumber, column.column_no);
+
+            elevator.Send_request(RequestedFloor, column.column_no);
 
 
 
@@ -87,6 +86,7 @@ namespace Commercial_controller
         public string status;
         public int elevator_floor;
         public string elevator_direction;
+        public bool Sensor;
         public List<int> floor_list;
 
         public Elevator(int elevator_no, string status, int elevator_floor, string elevator_direction)
@@ -95,9 +95,10 @@ namespace Commercial_controller
             this.status = status;
             this.elevator_floor = elevator_floor;
             this.elevator_direction = elevator_direction;
+            this.Sensor = true;
             this.floor_list = new List<int>();
         }
-        public void Send_request(int RequestedFloor,char column_no)
+        public void Send_request(int RequestedFloor, char column_no)
         {
             floor_list.Add(RequestedFloor);
             if (RequestedFloor > elevator_floor)
@@ -112,7 +113,7 @@ namespace Commercial_controller
 
             Operate_elevator(RequestedFloor, column_no);
         }
-        public void Operate_elevator(int RequestedFloor,char column_no)
+        public void Operate_elevator(int RequestedFloor, char column_no)
         {
             if (RequestedFloor == elevator_floor)
             {
@@ -126,12 +127,13 @@ namespace Commercial_controller
                 status = "moving";
                 Console.WriteLine("Button Light Off");
                 Console.WriteLine("---------------------------------------------------");
-                Console.WriteLine("Column : " +column_no +" Elevator : " + this.elevator_no + " " + status);
+                Console.WriteLine("Column : " + column_no + " Elevator : " + this.elevator_no + " " + status);
+                Console.WriteLine("---------------------------------------------------");
                 this.elevator_direction = "down";
                 Move_down(RequestedFloor, column_no);
                 this.status = "stopped";
-                Console.WriteLine("---------------------------------------------------");
                 Console.WriteLine("Column : " + column_no + " Elevator : " + this.elevator_no + " " + status);
+
                 this.Open_door();
                 this.floor_list.Remove(0);
             }
@@ -142,44 +144,52 @@ namespace Commercial_controller
                 Console.WriteLine("Button Light Off");
                 Console.WriteLine("---------------------------------------------------");
                 Console.WriteLine("Column : " + column_no + " Elevator : " + this.elevator_no + " " + status);
+                Console.WriteLine("---------------------------------------------------");
                 this.elevator_direction = "up";
                 this.Move_up(RequestedFloor, column_no);
                 this.status = "stopped";
                 Console.WriteLine("---------------------------------------------------");
                 Console.WriteLine("Column : " + column_no + " Elevator : " + this.elevator_no + " " + status);
 
+
                 this.Open_door();
 
                 this.floor_list.Remove(0);
             }
-       
+
         }
 
-        public  void Open_door()
+        public void Open_door()
         {
             System.Threading.Thread.Sleep(300);
 
             Console.WriteLine("---------------------------------------------------");
 
             Console.WriteLine("Open Door");
-            Console.WriteLine("---------------------------------------------------");
             System.Threading.Thread.Sleep(300);
 
             this.Close_door();
         }
         public void Close_door()
         {
-            Console.WriteLine("close door");
-            System.Threading.Thread.Sleep(300);
-            Console.WriteLine("---------------------------------------------------");
-
+            if (Sensor == true)
+            {
+                Console.WriteLine("close door");
+                System.Threading.Thread.Sleep(300);
+                Console.WriteLine("---------------------------------------------------");
+            }
+            else if (Sensor == false)
+            {
+                Open_door();
+            }
         }
 
 
         public void Move_up(int RequestedFloor, char column_no)
         {
-            Console.WriteLine("Column : " + column_no + " Elevator : #" + elevator_no + "  Floor : " + this.elevator_floor);
+            Console.WriteLine("Column : " + column_no + " Elevator : #" + elevator_no + "  Current Floor : " + this.elevator_floor);
             System.Threading.Thread.Sleep(300);
+            Console.WriteLine("---------------------------------------------------");
             while (this.elevator_floor != RequestedFloor)
             {
                 this.elevator_floor += 1;
@@ -191,8 +201,10 @@ namespace Commercial_controller
 
         public void Move_down(int RequestedFloor, char column_no)
         {
-            Console.WriteLine("Column : " + column_no + " Elevator : #" + elevator_no + "  Floor : " + this.elevator_floor);
-            System.Threading.Thread.Sleep(100);
+            Console.WriteLine("Column : " + column_no + " Elevator : #" + elevator_no + "  Current Floor : " + this.elevator_floor);
+            System.Threading.Thread.Sleep(300);
+            Console.WriteLine("---------------------------------------------------");
+
             while (this.elevator_floor != RequestedFloor)
             {
                 this.elevator_floor -= 1;
@@ -200,6 +212,8 @@ namespace Commercial_controller
 
                 System.Threading.Thread.Sleep(100);
             }
+            Console.WriteLine("---------------------------------------------------");
+
         }
 
 
@@ -230,45 +244,52 @@ namespace Commercial_controller
                 elevator_list.Add(elevator);
             }
         }
-        public Elevator Find_elevator(int RequestedFloor, string user_direction)
+        public Elevator Find_Assign_elevator(int RequestedFloor, int FloorNumber, string user_direction)
         {
-            Elevator bestElevator = null;
-            //int shortest_distance = 300;
-            int shortest_list = 85;
+
             foreach (var elevator in elevator_list)
+                if (elevator.status == "idle")
+                {
+                    return elevator;
+                }
+
+            var bestElevator = 0;
+            var shortest_distance = 1000;
+            for (var i = 0; i < this.elevator_list.Count; i++)
             {
-                if (elevator.elevator_floor > RequestedFloor && elevator.elevator_direction == "down" && user_direction == "down")
+                var ref_distance = Math.Abs(elevator_list[i].elevator_floor - elevator_list[i].floor_list[0]) + Math.Abs(elevator_list[i].floor_list[0] - 1);
+                if (shortest_distance > ref_distance)
                 {
-                    if (shortest_list > elevator.floor_list.Count)
-                    { 
-                        shortest_list = elevator.floor_list.Count;
-                        bestElevator = elevator;
-                    }
-                }
-
-                else if (elevator.status == "idle")
-                {
-                    bestElevator = elevator;
-                }
-
-                else if (elevator.status == "moving" || elevator.status == "stopped" && elevator.elevator_direction != user_direction)
-                {
-                    if (shortest_list > elevator.floor_list.Count)
-                    {
-                        shortest_list = elevator.floor_list.Count;
-                        bestElevator = elevator;
-                    }
-                }
-                else if(shortest_list > elevator.floor_list.Count)
-                {
-                    shortest_list = elevator.floor_list.Count;
-                    bestElevator = elevator;
+                    shortest_distance = ref_distance;
+                    bestElevator = i;
                 }
             }
-            return bestElevator;
+            return elevator_list[bestElevator];
+
+
+
+
+
+        }
+        public Elevator Find_Requested_elevator(int RequestedFloor, string user_direction)
+        {
+            var shortest_distance = 999;
+            var bestElevator = 0;
+
+            for (var i = 0; i < this.elevator_list.Count; i++)
+            {
+                var ref_distance = elevator_list[i].elevator_floor - RequestedFloor;
+
+                if (ref_distance > 0 && ref_distance < shortest_distance)
+                {
+                    shortest_distance = ref_distance;
+                    bestElevator = i;
+                }
+            }
+            return elevator_list[bestElevator];
         }
 
-} 
+    }
 
     public class Battery
     {
@@ -287,7 +308,7 @@ namespace Commercial_controller
             char cols = 'A';
             for (int i = 0; i < this.no_of_column; i++, cols++)
             {
-                
+
                 Column column = new Column(cols, 85, 5);
 
                 column.column_no = cols;
@@ -298,42 +319,36 @@ namespace Commercial_controller
         public Column Find_best_column(int RequestedFloor)
         {
             Column best_column = null;
-            string col = "e";
             foreach (Column column in column_list)
             {
-                if (RequestedFloor > 0 && RequestedFloor <= 20)
+                if (RequestedFloor > 1 && RequestedFloor <= 22 || RequestedFloor == 1)
                 {
                     best_column = column_list[0];
-                    col = "Column A";
                 }
-                else if (RequestedFloor > 20 && RequestedFloor <= 42)
+                else if (RequestedFloor > 22 && RequestedFloor <= 43 || RequestedFloor == 1)
                 {
 
                     best_column = column_list[1];
-                    col = "Column B";
 
 
                 }
-                else if (RequestedFloor > 42 && RequestedFloor <= 64)
+                else if (RequestedFloor > 43 && RequestedFloor <= 64 || RequestedFloor == 1)
                 {
                     best_column = column_list[2];
-                    col = "Column C";
 
 
                 }
-                else if (RequestedFloor > 64 && RequestedFloor <= 85)
+                else if (RequestedFloor > 64 && RequestedFloor <= 85 || RequestedFloor == 1)
                 {
                     best_column = column_list[3];
-                    col = "Column D";
 
 
                 }
 
             }
-            Console.WriteLine(col);
             return best_column;
         }
-}
+    }
 
 
 
@@ -344,14 +359,45 @@ namespace Commercial_controller
         public static void Main(string[] args)
         {
             ElevatorController controller = new ElevatorController(85, 4, 5, "down");
-            controller.AssignElevator(66);
 
-            Elevator elevator = controller.RequestElevator(80,1);
-            controller.AssignElevator(66);
-            elevator = controller.RequestElevator(29,1);
-            controller.AssignElevator(32);
-            elevator = controller.RequestElevator(4,1);
-            controller.AssignElevator(2);
+            // controller.battery.column_list[1].elevator_list[0].elevator_floor = 4;
+            // controller.battery.column_list[1].elevator_list[0].elevator_direction = "up";
+            // controller.battery.column_list[1].elevator_list[0].status = "moving";
+            // controller.battery.column_list[1].elevator_list[0].floor_list.Add(28);
+
+
+            // controller.battery.column_list[1].elevator_list[1].elevator_floor = 32;
+            // controller.battery.column_list[1].elevator_list[1].elevator_direction = "up";
+            // controller.battery.column_list[1].elevator_list[1].status = "moving";
+            // controller.battery.column_list[1].elevator_list[1].floor_list.Add(39);
+
+
+            // controller.battery.column_list[1].elevator_list[2].elevator_floor = 40;
+            // controller.battery.column_list[1].elevator_list[2].elevator_direction = "down";
+            // controller.battery.column_list[1].elevator_list[2].status = "moving";
+            // controller.battery.column_list[1].elevator_list[2].floor_list.Add(1);
+
+
+            // controller.battery.column_list[1].elevator_list[3].elevator_floor = 32;
+            // controller.battery.column_list[1].elevator_list[3].elevator_direction = "down";
+            // controller.battery.column_list[1].elevator_list[3].status = "moving";
+            // controller.battery.column_list[1].elevator_list[3].floor_list.Add(22);
+            // controller.battery.column_list[1].elevator_list[3].floor_list.Add(1);
+
+
+            // controller.battery.column_list[1].elevator_list[4].elevator_floor = 35;
+            // controller.battery.column_list[1].elevator_list[4].elevator_direction = "down";
+            // controller.battery.column_list[1].elevator_list[4].status = "moving";
+            // controller.battery.column_list[1].elevator_list[4].floor_list.Add(1);
+
+
+
+            controller.AssignElevator(36);
+            Elevator elevator = controller.RequestElevator(37, 1);
+            //controller.AssignElevator(27);
+            //elevator = controller.RequestElevator(40, 1);
+            //controller.AssignElevator(32);
+            //elevator = controller.RequestElevator(4, 1);
 
 
 
