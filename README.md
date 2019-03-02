@@ -12,7 +12,10 @@ Where the scenario are( at the end of the files )
 GOLANG
 Goland files are on the main folder is name is Controller_commercial.go
 Instruction are on the top and scenario are at the end of the files
-
+https://www.youtube.com/watch?v=0_4HunAyMZ4&t=8s
+https://www.youtube.com/watch?v=0_4HunAyMZ4&t=8s
+https://www.youtube.com/watch?v=0_4HunAyMZ4&t=8s
+https://www.youtube.com/watch?v=0_4HunAyMZ4&t=8s
 -----------------------------
 ## WEEK 2 ODYSSEY
 -----------------------------
